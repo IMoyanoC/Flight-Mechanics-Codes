@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Entorno virtual
+.venv/
+venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Archivos temporales
+*.log
+*.tmp
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+#PDF
+*.pdf
+
