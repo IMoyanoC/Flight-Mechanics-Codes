@@ -1,127 +1,34 @@
-#TP8- Config Completa
+
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.constants import g
 import math as mt
 import sympy as sp
 from scipy.optimize import fsolve
-from scipy.interpolate import interp1dw
+from scipy.interpolate import interp1d
 from scipy.integrate import quad
 
 #==========================================================================
 #------------------------ AIRCRAFT PARAMETERS -----------------------------
 #==========================================================================
 
-#------Parametros Geometricos-----
-S = 27.307 # superficie alar
-S_net = 23.368 # Superficie expuesta
-Swet_w= 23.368 # Superficie mojada ala
-CAM = 1.92 # Cuerda aerodinamica media
-CGM=1.781 # Cuerda media geometrica
-b = 15.33 # Envergadura
-taper = 0.374 # Ahusamiento
-A = 8.61 # Alargamiento
-flecha = np.radians(0) # Angulo flecha cuarto cuerda
-clt_alf_2 = 6.5855 # Pendiente sustentacion (puntera)
-cl_alf_1 = 6.3810 # Pendiente sustentacion (raiz)
-Cm_ac_w =-0.016 # Coeficiente momento libre ala
-alabeo = np.radians(-3.95) # Alabeo aerodinamico total
-delta_z_CL = 0.1 #Porque es ala baja
+#------Parametros De Aeronave-----
+from Duke import *
+#------Parametros Generales-----
 
-#-----------Parámetros condición vuelo crucero---------
-M = 4000 # Masa aeronave
-V_crucero = 113.18#100.55 # velocidad crucero en m/s
-h = 8850 #7925 # altura crucero
-x_cg = 0.3
-x_ac = 0.248 # Posición centro de gravedad adimensionada con la CAM
-rho = 1.225 * (1-2.2558e-5 * h)**4.2559 # densidad
 w = M * g # Peso de la aeronave
+def rho(h):
+    rho = 1.225 * (1-2.2558e-5 * h)**4.2559
+    return rho
 
-#------------Parámetros del fuselaje------------
-l_f = 10.8  # longitud del fuselaje
-b_f = 1.65  # ancho del fuselaje
-h_f = 1.71  # alto fuselaje
-
-#------------Parámetros del empenaje----------------
-CLa_h = 4.05  # Pendiente sustentacion empenaje
-S_h = 5.448   # Superficie empenaje
-n_h = 0.95    # rendimiento empenaje
-
-#--------Parámetros de la planta motora--------------
-#PARAMETROS PLANTA MOTORA
-l_n=2.74     # Parametro geometrico l_n
-l_fn=2.83    # Parametro geometrico l_fn
-Sfront_barqui = 0.55
-Swet_barqui = 8 
-b_n = 0.755  # parametro geometrico Bn
-l_p = 2.91   # Parametro geometrico l_p
-l_h = 5.14   # parametro geometrico l_h
-mb2 = 1.36   # Parametro geometrico mb2
-N_p = 4 # número de palas
-Nn = 2 # número de barquillas
-dp = 2.286  # Diametro helice
-
-#DEFINICION DE PARAMETROS
-#PARAMETROS PLANTA ALAR (EQUIVALENTE)
-flecha1_4= np.radians(0)
-Clat=6.3810
-Clar=6.5855
-Clmax = (1.6 + 1.8)/2
-Cli = 0.3
-Cla=(Clat + Clar)/2
-CMO=-0.01573702756129474
-CLaw= 5.172
-CLOw= 0.35697719620
-t_c= 0.18
-Cr= 2.67 #cuerda raiz
-tr= t_c*Cr #espesor cuerda raiz
-clor= 0.1451
-#PARAMETROS CONDICION VUELO CRUCERO
-m=3800 #[kg]
-V_crucero= 40 #[ms]
-h = 7925 #[m]
-lf = 10.5
-bf = 1.65
-#PARAMETROS FUSELAJE
-zf=1.71
-Swet_f = 59.22
-Vf = 16.21
-#PARAMETROS EMPENAJE HORIZONTAL
-Clah = 4.05
-Sh = 5.44
-rendimientoh = 0.85
-Ah=5.25
-flecha1_4h = 0
-taperh = 0.6
-t_c_h = 0.12
-CAMh=1.27
-de_da=0.38
-flecha1_2h = flecha1_4h-(1/Ah)*((1-taperh)/(1+taperh))
-#PARAMETRO DEL EMPENAJE VERTICAL
-Sv=2.5
-Av=1.52
-flecha1_4v=np.radians(50)
-taperv=0.45
-t_c_v=0.12
-CAMv=1.45
-flecha1_2v = flecha1_4v-(1/Av)*((1-taperv)/(1+taperv))
-
-
-
-#-------------Parametros extraidos de otros TPS---------
-#Parámetros del ala:
-CLa_w = 5.1726 # Pendiente de sustentación del ala ' Sale de Multhopp
-de_da = 0.38 #0.54
-Cm_ac_w =-0.01547 #sale de Multhopp
 #CURVA CL(al_pha) del avión completo
 K_I = (1 + 2.15 * (b_f / b)) * (S_net / S) + (mt.pi/2) * (b_f ** 2) / (CLa_w * S)
 K_II = (1 + 0.7 * b_f/b) * S_net/S
 CLa_wf = K_I * CLa_w # pendiente sust ala fuselaje
 print('Pendiente de sustentación combinación ala-fuselaje: CLa_wf = ', CLa_wf)
 CLa = CLa_wf * (1 + (x_cg- x_ac) * CAM / l_h) #Pendiente de sustentacion del avion completo
-CL0 = (w) / (0.5 * rho * V_crucero**2 * S) # Coeficiente de sustentación en condiciones de crucero
-# CL0 = 0.356977
-al_pha_0 =-CL0 / CLa
+CL0 = (w) / (0.5 * rho(hc) * V_crucero**2 * S) # Coeficiente de sustentación en condiciones de crucero
+al_pha_0 = -CL0 / CLa
 def CL(al_pha):
   CL = CL0 + CLa * al_pha
   return CL
@@ -129,10 +36,10 @@ al_pha_values = np.linspace(np.radians(-5), np.radians(18), 100)
 al_pha_values_degr = np.linspace(-5, 18, 100)
 cl_al_pha_values = [CL(al_pha) for al_pha in al_pha_values]
 plt.figure(figsize=(10, 5))
-plt.plot(al_pha_values_degr, cl_al_pha_values, label='$C_L(\\al_pha)$', color='blue')
+plt.plot(al_pha_values_degr, cl_al_pha_values, label=r'$C_L(\alpha)$', color='blue')
 plt.axhline(y=0, color='black', linestyle='-', linewidth=0.5)
 plt.axvline(x=0, color='black', linestyle='-', linewidth=0.5)
-plt.xlabel('$\\al_pha$ (grados)')
+plt.xlabel(r'$\alpha$ (grados)')
 plt.ylabel('$C_L$')
 plt.title('Curva de sustentación para vuelo trimado')
 plt.legend()
@@ -144,7 +51,7 @@ D_f_CMac =-1.8*(1- (2.5 * b_f)/l_f) * (np.pi * b_f * h_f * l_f)/(4 * S * CAM) * 
 D_f_CMac = D_f_CMac*(np.pi/4)*b_f*h_f
 Cmac_wf = Cm_ac_w + D_f_CMac
 D_f1 =-(1.8/CLa_wf)*(b_f*h_f*l_fn/(S*CAM))
-D_f2 = (0.273/(1+taper)) * ((b_f*cg *(b- b_f)) / (CAM**2 *(b + 2.15*b_f))) * mt.tan(mt.radians(flecha))
+D_f2 = (0.273/(1+taper)) * ((b_f * x_cg *(b- b_f)) / (CAM**2 *(b + 2.15* b_f))) * mt.tan(mt.radians(sweep1_4))
 x_ac_wf = x_ac + D_f1 + D_f2
 def Cm_wf(CL_wf):
   Cm_wf = Cmac_wf + CL_wf * (x_cg- x_ac_wf)
@@ -220,18 +127,19 @@ plt.show()
 #VARIABLES AGREGADAS POR NOSOTROS
 #Consideracion de efectos de compresibilidad
 Mach=0.39
-flecha1_2 = flecha1_4-(1/A)*((1-taper)/(1+taper))
-tg_flecha_compresible= flecha1_2/(np.sqrt(1-Mach**2))
+sweep1_2 = sweep1_4-(1/A)*((1-taper)/(1+taper))
+tg_sweep_compresible= sweep1_2/(np.sqrt(1-Mach**2))
 Wto=4500 #[kg]
-rho = 0.545
+
 visc = 1.62e-5
 beta_graficos =np.sqrt(1-Mach**2)
-Re_w = (rho * V_crucero * CAM) / visc
-Re_f = (rho * V_crucero * lf) / visc
-Re_h = (rho * V_crucero * CAMh) / visc
-Re_b = (rho * V_crucero * l_n) / visc
-Re_v = (rho * V_crucero * CAMv) / visc
-Ref_local = (rho * V_crucero * l_fn) / visc
+Re_w = (rho(hc) * V_crucero * CAM) / visc
+Re_f = (rho(hc) * V_crucero * l_f) / visc
+Re_h = (rho(hc) * V_crucero * CAMh) / visc
+Re_b = (rho(hc) * V_crucero * l_n) / visc
+Re_v = (rho(hc) * V_crucero * CAMv) / visc
+Ref_local = (rho(hc) * V_crucero * l_fn) / visc
+
 #Parametros de flap
 Cla_flap = 6.45
 cd_po=0.00587 #RESISTENCIA PERFIL FLAP
@@ -259,9 +167,9 @@ Kb= 0.32
 Cte1=0.405
 Cte2=0.278
 Cte3=0.335
-F=(2*np.pi * A) /(Cla * np.cos(flecha1_4))
+F=(2*np.pi * A) /(Cla * np.cos(sweep1_4))
 integ1= (1+2*taper)/(3*(1+taper))
-integ2= 4/(3*np.pi)+0.001*mt.atan(tg_flecha_compresible)
+integ2= 4/(3*np.pi)+0.001*mt.atan(tg_sweep_compresible)
 eta_cp= Cte1*integ1 + Cte2*4/(3*np.pi) +Cte3*integ2
 delta=46.264 * (eta_cp-4/(3*np.pi))**2
 C_vorticoso_sin_alabeo= (1+delta)/(np.pi*A)
@@ -285,7 +193,6 @@ A_vorticos_fuselaje = coeficientes[2] if len(coeficientes) > 2 else 0
 #RESISTENCIA POR SUSTENTACION DEL EMPENAJE
 x_ac= 0.16751622805445915
 Cmac=-0.25479659918747544
-x_cg= 0.3
 Cl_h= (Cmac+CL*(x_cg-x_ac))/(Sh*l_h/(S*CAM))
 CD_S_h= (1.02*Cl_h**2 * Sh/(np.pi * Ah))/S
 CD_S_h_desarrollado = sp.expand(CD_S_h)
@@ -295,13 +202,13 @@ C_vorticos_empenaje = coeficientes[0] if len(coeficientes) > 0 else 0
 B_vorticos_empenaje = coeficientes[1] if len(coeficientes) > 1 else 0
 A_vorticos_empenaje = coeficientes[2] if len(coeficientes) > 2 else 0
 #RESISTENCIA DE PERFIL
-#RESISTENCIA DE LOS PERFILES- ALA
+#RESISTENCIA DE LOS PERFILES - ALA
 CF_lam_w= 1.33/np.sqrt(Re_w)
 CF_turb_w= 0.455/np.log10(Re_w)**2.58
 x_trans = 0.175*CAM
 phi_w = 2.7*t_c + 100*t_c**4
-Cdp_min_lam= 2*CF_lam_w*(1+phi_w*np.cos(flecha1_2)**2)
-Cdp_min_turb= 2*CF_turb_w*(1+phi_w*np.cos(flecha1_2)**2)
+Cdp_min_lam= 2*CF_lam_w*(1+phi_w*np.cos(sweep1_2)**2)
+Cdp_min_turb= 2*CF_turb_w*(1+phi_w*np.cos(sweep1_2)**2)
 Cdp_min= 0.175*Cdp_min_lam + (1-0.175)*Cdp_min_turb
 Cl = sp.symbols('Cl')
 DlCdp_ref = (67*Clmax)/(np.log10(Re_w))**4.5- 0.0046*(1 + 2.75*t_c)
@@ -317,7 +224,7 @@ Ac = 2.5
 l_n = 2.5
 la = 4.5
 Deff = np.sqrt(4/np.pi * Ac)
-taper_eff = min(lf/Deff , (l_n + la)/Deff +2)
+taper_eff = min(l_f/Deff , (l_n + la)/Deff +2)
 phi_f = 2.2/taper_eff**1.5 + 3.8/taper_eff**3
 CF_turb_f= 0.455/np.log10(Re_f)**2.58
 CD_S_b = CF_turb_f * Swet_f * (1 + phi_f)
@@ -339,14 +246,14 @@ B_perfilesf_upsweep= 0 #-0.004902
 C_perfilesf_upsweep= 0 #0.006
 #RESISTENCIA DE LAS BARQUILLAS
 CF_turb_b= 0.455/np.log10(Re_b)**2.58
-taper_effb = l_n / Bn
+taper_effb = l_n / b_n
 #NO LO PUDE HACER FUNCIONAR
 CD_S_n = CF_turb_b *(1 + 2.2 / taper_effb**1.5 + 3.8 / taper_effb**3.8 ) * Swet_barqui
 A_perfiles_barquilla = 2 * CD_S_n / S
 #RESISTENCIA DE PERFIL DEL EMPENAJE HORIZONTAL
 CF_turb_h= 0.455/np.log10(Re_h)**2.58
-CD_S_hbas = 2*CF_turb_h*(1+2.75*t_c_h*np.cos(flecha1_2h)**2)*Sh
-Dl_CD_S_h = 0.33 * Cl_h**2 / (np.pi*Ah*(np.cos(flecha1_2h))) * Sh
+CD_S_hbas = 2*CF_turb_h*(1+2.75*t_c_h*np.cos(sweep1_2h)**2)*Sh
+Dl_CD_S_h = 0.33 * Cl_h**2 / (np.pi*Ah*(np.cos(sweep1_2h))) * Sh
 Dl_CD_S_h_desarrollado = sp.expand(Dl_CD_S_h)
 CD_S_h_perf = (CD_S_hbas + Dl_CD_S_h_desarrollado) / S
 polinomio = sp.Poly(CD_S_h_perf, CL)
@@ -356,7 +263,7 @@ B_perfiles_empenaje = coeficientes[1] if len(coeficientes) > 1 else 0
 A_perfiles_empenaje = coeficientes[2] if len(coeficientes) > 2 else 0
 #RESISTENCIA DE PERFIL DEL EMPENAJE VERTICAL
 CF_turb_v = 0.455/np.log10(Re_v)**2.58
-CD_S_vbas = 2*CF_turb_v* (1+ 2.75*t_c_v*np.cos(flecha1_2v)**2) * Sv
+CD_S_vbas = 2*CF_turb_v* (1+ 2.75*t_c_v*np.cos(sweep1_2v)**2) * Sv
 A_perfiles_EV = CD_S_vbas / S
 #INTERFERENCIA Y CORRECCIONES
 #INTERFERENCIA ALA- FUSELAJE
@@ -366,11 +273,11 @@ A_interferencia_af_vort=Di_CDv
 #Inducida por viscosidad
 C_ci=4.5* Cr
 CF_turb_f_local= 0.455/np.log10(Ref_local)**2.58
-Di_CD_Sp= 1.5*CF_turb_f_local*tr*C_ci*np.cos(flecha1_2)**2
+Di_CD_Sp= 1.5*CF_turb_f_local*tr*C_ci*np.cos(sweep1_2)**2
 A_interferencia_af_visc = Di_CD_Sp/S
 B_interferencia_af_visc = CF_turb_f_local*Cr*Deff / S
 #Fuselaje por presencia del ala
-Di_CD_Sp_fa=2*beta*np.cos(flecha1_2)/A * D2*CL/CLaw
+Di_CD_Sp_fa=2*beta*np.cos(sweep1_2)/A * D2*CL/CLaw
 B_interferencia_fa= Di_CD_Sp_fa / S
 B_interferencia_fa_desarrollado = sp.expand(B_interferencia_fa)
 polinomio = sp.Poly(B_interferencia_fa_desarrollado, CL)
@@ -422,7 +329,7 @@ C_total= C_total_protu+ C_total_interferencia+C_total_perfiles+C_total_sustentac
 B_total=B_total_protu+ B_total_interferencia+B_total_perfiles+B_total_sustentacion
 A_total=A_total_protu+ A_total_interferencia+A_total_perfiles+A_total_sustentacion
 Polar_crucero= C_total*(CL)**2 + B_total*CL + A_total
-sp.plot(CL, Polar_crucero, xlabel='', ylabel='', xlim=(-1.5,1.5),ylim=(0,0.18) )
+#sp.plot(CL, Polar_crucero, xlabel='', ylabel='', xlim=(-1.5,1.5),ylim=(0,0.18) )
 Polar_crucero= C_total * CL**2 + B_total * CL + A_total
 Polar_crucero_func = sp.lambdify(CL, Polar_crucero, 'numpy')
 #Gráfica Polar Crucero
@@ -452,7 +359,7 @@ Df_cd_po= kd*Cla_flap* al_pha_delta_prima* cf_c * deltaf * np.sin (deltaf) + cd_
 Df_Clo_prim= Cla_flap*eta_delta* al_pha_delta_prima*deltaf
 Df_Clo = Df_Clo_prim * cprim_c + clor * (cprim_c-1)
 Df_CLO= Df_Clo * CLaw / Clar * Kc * Kb
-Df_CD_perfil= k2_3 * Sf/Swet_w * Df_cd_po * np.cos(flecha1_4)- cd_po * kl*Df_CLO*(CL-(CLOw+0.25*Df_CLO))
+Df_CD_perfil= k2_3 * Sf/Swet_w * Df_cd_po * np.cos(sweep1_4)- cd_po * kl*Df_CLO*(CL-(CLOw+0.25*Df_CLO))
 Df_CD_perfil_desarrollado = sp.expand(Df_CD_perfil)
 polinomio = sp.Poly(Df_CD_perfil, CL)
 coeficientes = polinomio.coeffs()
@@ -475,8 +382,8 @@ mhu2= 0.41 #DE TABLA
 mhu3= 0.04 #DE TABLA
 cl=CL + Df_Clo * (1-Sf/S)
 Df_cm1_4=-mhu1*Df_Clo * cprim_c- cl/8 * cprim_c* (cprim_c-1)
-Df_Cm1_4= mhu2 * Df_cm1_4 + 0.7*A/(1+2/A)*mhu3*Df_Clo * np.tan(flecha1_4)
-eh= 1-(0.25/np.cos(flecha1_4h)**2)
+Df_Cm1_4= mhu2 * Df_cm1_4 + 0.7*A/(1+2/A)*mhu3*Df_Clo * np.tan(sweep1_4)
+eh= 1-(0.25/np.cos(sweep1_4h)**2)
 Dtrim_CD= Df_Cm1_4*(Df_Cm1_4 + 2*CMO)/(np.pi*Ah*eh*(l_h/CAMh)**2 * (Sh/S))
 Dtrim_CD_desarrollado = sp.expand(Dtrim_CD)
 polinomio = sp.Poly(Dtrim_CD, CL)
@@ -496,12 +403,12 @@ C_total_LS= C_total_flap + C_total
 B_total_LS= B_total_flap + B_total
 A_total_LS= A_total_flap + A_total
 Polar_LS= C_total_LS*(CL)**2 + B_total_LS*CL + A_total_LS
-sp.plot(CL, Polar_LS, xlabel='', ylabel='', xlim=(-1.5,1.5),ylim=(0,0.18) )
+#sp.plot(CL, Polar_LS, xlabel='', ylabel='', xlim=(-1.5,1.5),ylim=(0,0.18) )
 #Gráfico Polar Baja Velocidad (delta=30grados)
 polar_LS_func = sp.lambdify(CL, Polar_LS, 'numpy')
 Polar_LS_vals = polar_LS_func(CL_vals)
 plt.figure(figsize=(10, 6))
-plt.plot(CL_vals, Polar_LS_vals, label='Curva Polar Crucero', color='green')
+plt.plot(CL_vals, Polar_LS_vals, label='Curva Polar Baja Velocidad', color='green')
 plt.xlabel('Coeficiente de Sustentación (CL)', fontsize=14)
 plt.ylabel('Coeficiente de Drag (CD)', fontsize=14)
 plt.title('Curva Polar de vuelo crucero', fontsize=16, fontweight='bold')
