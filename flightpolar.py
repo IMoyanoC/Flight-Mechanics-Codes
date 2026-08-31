@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 df = pd.read_excel("tabla_eficiencia_altitud.xlsx")
+from Duke import Pot_eje_alt,CL_max,K,CD0
 # ============================================================================
 # AIRCRAFT DATA
 # ============================================================================
@@ -11,9 +12,7 @@ rho0 = 1.225                 # Sea-level density [kg/m^3]
 W = 30146                     # Aircraft weight [N]
 S = 19.78                      # Wing area [m^2]
 
-CD0 = 0.026                    # Zero-lift drag coefficient
-K = 0.0596                      # Induced drag factor
-CLmax = 1.6                  # Maximum lift coefficient
+CLmax = CL_max                  # Maximum lift coefficient
 
 w = W / S                    # Wing loading [N/m^2]
 
@@ -44,31 +43,10 @@ print("Number of altitudes:", len(altitude))
 #     ...
 # ])
 
-P_engine_hp = np.array([
-    380,
-    380,
-    380,
-    380,
-    380,
-    380,
-    380,
-    380,
-    380,
-    375,
-    370,
-    365,
-    360,
-    353,
-    345,
-    320,
-    300,
-    275,
-    255,
-    235,
-    220,
-])
+P_engine_hp = Pot_eje_alt
+
 print(len(P_engine_hp), "engine power values provided for altitudes:", altitude, "m")
-P_engine = P_engine_hp * HP_TO_W
+P_engine = P_engine_hp * HP_TO_W 
 
 
 if len(P_engine) != len(altitude):

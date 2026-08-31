@@ -1,5 +1,11 @@
 import numpy as np
-#------Parametros Geometricos-----
+#------Parametros Aerodinámicos-----
+CL_max = 1.27
+
+#------Polar preliminar-----
+CD0 = 0.026                    # Zero-lift drag coefficient
+K = 0.0596                      # Induced drag factor
+
 #------Parametros Planta Alar-----
 S = 19.780                  # superficie alar [m2]
 S_net = 15.023              # Superficie expuesta [m2]
@@ -13,13 +19,13 @@ sweep1_4= np.radians(0)     # Angulo sweep cuarto cuerda [grados]
 clt_alf_2 = 6.5855          # Pendiente sustentacion (puntera)
 cl_alf_1 = 6.3810           # Pendiente sustentacion (raiz)
 Cm_ac_w = -0.016            # Coeficiente momento libre ala
-alabeo = np.radians(-3.95)  # Alabeo aerodinamico total [grados]
+alabeo = np.radians(-4)     # Alabeo aerodinamico total [grados]
 delta_z_CL = 0.1            # Porque es ala baja
 
 #-----------Parámetros condición vuelo crucero---------
-M = 3073            # Masa aeronave [kg]
-V_crucero = 113.18  # Velocidad crucero en m/s
-hc = 8850           # Altura crucero 
+M = 2795            # Masa aeronave con medio tanque de combustible y máxima payload [kg]
+V_crucero = 113.18  # Velocidad crucero [m/s]
+hc = 8850           # Altura crucero [m]
 x_cg = 0.3          # Posición centro de gravedad adimensionada con la CAM
 x_ac = 0.248        # Posición centro aerodinámico adimensionada con la CAM
 
@@ -47,6 +53,31 @@ mb2 = 1.36    # Parametro geometrico mb2
 N_p = 4       # número de palas
 Nn = 2        # número de barquillas
 dp = 2.286    # Diametro helice
+
+#------Curva de potencia----- (Definida cada 500 m desde 0 m)
+Pot_eje_alt = [(
+    380,
+    380,
+    380,
+    380,
+    380,
+    380,
+    380,
+    380,
+    380,
+    375,
+    370,
+    365,
+    360,
+    353,
+    345,
+    320,
+    300,
+    275,
+    255,
+    235,
+    220,
+)]
 
 #DEFINICION DE PARAMETROS
 #PARAMETROS PLANTA ALAR (EQUIVALENTE)
