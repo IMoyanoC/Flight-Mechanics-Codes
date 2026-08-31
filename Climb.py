@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.constants import g
-
+IMPORTAR EXCEL
 # ============================================================
 # 1. CONSTANTES Y PARÁMETROS DE LA AERONAVE
 # ============================================================
@@ -9,8 +9,7 @@ from scipy.constants import g
 
 # --- Beechcraft 60 Duke ---
 from Duke import *
-# Reemplazar por los valores definitivos de tu análisis
-M = 2300.0                   # [kg] <-- EJEMPLO
+
 W = M * g                    # [N]
 
 
@@ -59,42 +58,23 @@ def atmosfera_isa(h):
 # para el Duke.
 # ============================================================
 
-altitud_motor = np.array([
-    0,
-    1000,
-    2000,
-    3000,
-    4000,
-    5000,
-    6000,
-    7000,
-    8000,
-    9000
-])  # [m]
+altitud_motor = np.arange(0, 10001, 1000)  # [m]
+print(altitud_motor)
 
 
-potencia_total_hp = np.array([
-    760,
-    760,
-    760,
-    750,
-    720,
-    680,
-    630,
-    570,
-    510,
-    450
-])  # [hp] <-- EJEMPLO, REEMPLAZAR
+potencia_total_hp = []
+for h in altitud_motor:
 
+    potencia_total_hp.append(2 * Pot_eje_alt[h])
+print(potencia_total_hp)
 
 HP_TO_W = 745.7
 
-potencia_total_W = potencia_total_hp * HP_TO_W
-
-
+potencia_total_W = np.array(potencia_total_hp) * HP_TO_W
+    
 def potencia_eje(h):
     """
-    Potencia TOTAL disponible al eje de ambos motores [W]
+    Interpolación de Potencia TOTAL disponible al eje de ambos motores [W]
     en función de la altitud.
     """
 
@@ -141,16 +121,7 @@ def eta_helice(h, V):
 # 5. POLAR AERODINÁMICA
 # ============================================================
 
-def coeficiente_CD(CL, M):
-    """
-    Polar aerodinámica.
-
-    Actualmente:
-        CD = CD0 + k CL²
-
-    Está escrito como función de CL y Mach para mantener
-    exactamente la estructura planteada en la clase.
-    """
+def coeficiente_CD(CL):
 
     CD = CD0 + K * CL**2
 

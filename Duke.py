@@ -54,30 +54,30 @@ N_p = 4       # número de palas
 Nn = 2        # número de barquillas
 dp = 2.286    # Diametro helice
 
-#------Curva de potencia----- (Definida cada 500 m desde 0 m)
-Pot_eje_alt = [(
-    380,
-    380,
-    380,
-    380,
-    380,
-    380,
-    380,
-    380,
-    380,
-    375,
-    370,
-    365,
-    360,
-    353,
-    345,
-    320,
-    300,
-    275,
-    255,
-    235,
-    220,
-)]
+#------Curva de potencia HP----- (Definida cada 500 m desde 0 m)
+Pot_eje_alt = {
+    0:380,
+    500:380,
+    1000:380,
+    1500:380,
+    2000:380,
+    2500:380,
+    3000:380,
+    3500:380,
+    4000:380,
+    4500:375,
+    5000:370,
+    5500:365,
+    6000:360,
+    6500:353,
+    7000:345,
+    7500:320,
+    8000:300,
+    8500:275,
+    9000:255,
+    9500:235,
+    10000:220,
+}
 
 #DEFINICION DE PARAMETROS
 #PARAMETROS PLANTA ALAR (EQUIVALENTE)
