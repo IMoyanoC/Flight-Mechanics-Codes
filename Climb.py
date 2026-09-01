@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.constants import g
-IMPORTAR EXCEL
+df = pd.read_excel("tabla_eficiencia_altitud.xlsx")
 # ============================================================
 # 1. CONSTANTES Y PARÁMETROS DE LA AERONAVE
 # ============================================================
