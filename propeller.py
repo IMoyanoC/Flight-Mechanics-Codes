@@ -249,9 +249,8 @@ for h in altitude:
         eta, T, eta_i = propeller_efficiency(V, P, rho_h, A, eta0)
         eta_h.append(eta)
 
-    table_data[(f"{h:.0f} m", "V [m/s]")] = V_array
     table_data[(f"{h:.0f} m", "eta")] = eta_h
-
+table_data[(f"Velocidad", "V [m/s]")] = V_array
 eta_altitude_table = pd.DataFrame(table_data)
 
 print("\n===== EFFICIENCY VS VELOCITY AND ALTITUDE =====")

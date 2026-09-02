@@ -1,7 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
+
 from scipy.constants import g
-df = pd.read_excel("tabla_eficiencia_altitud.xlsx")
+
 # ============================================================
 # 1. CONSTANTES Y PARÁMETROS DE LA AERONAVE
 # ============================================================
@@ -49,72 +50,31 @@ def atmosfera_isa(h):
 # ============================================================
 # 3. POTENCIA DE LOS MOTORES
 # ============================================================
-#
-# IMPORTANTE:
-# P_eje debe ser la potencia TOTAL de ambos motores.
-#
-# Estos números son SOLAMENTE DE EJEMPLO.
-# Aquí debes colocar los valores que ya calculaste/obtuviste
-# para el Duke.
-# ============================================================
-
-altitud_motor = np.arange(0, 10001, 1000)  # [m]
-print(altitud_motor)
-
-
-potencia_total_hp = []
-for h in altitud_motor:
-
-    potencia_total_hp.append(2 * Pot_eje_alt[h])
-print(potencia_total_hp)
+from motor_tio541_2900rpm import potencia_total_duke
 
 HP_TO_W = 745.7
-
-potencia_total_W = np.array(potencia_total_hp) * HP_TO_W
     
 def potencia_eje(h):
     """
-    Interpolación de Potencia TOTAL disponible al eje de ambos motores [W]
-    en función de la altitud.
+    Cálculo de la potencia [W]TOTAL disponible (2 motores) 
+    en el eje para una altitud h [m], con MAP 40 y 
     """
-
-    return np.interp(
+    return potencia_total_duke(
         h,
-        altitud_motor,
-        potencia_total_W
-    )
+        40,
+    ) * HP_TO_W
 
 
 # ============================================================
 # 4. RENDIMIENTO DE HÉLICE
 # ============================================================
-#
-# Puedes reemplazar esta función directamente por tus
-# curvas de Solies η(V,h).
-#
-# Por ahora dejo una curva analítica de ejemplo.
-# ============================================================
+from eficiencia_helice import eficiencia_helice
 
 def eta_helice(h, V):
-    """
-    Rendimiento de hélice.
 
-    h : [m]
-    V : TAS [m/s]
+    eta = eficiencia_helice(V, h)
 
-    Devuelve eta_p [-]
-    """
-
-    # EJEMPLO PROVISORIO
-    # Sustituir por tus curvas reales η(V,h)
-
-    eta = (
-        0.84
-        - 0.00010 * (V - 70.0)**2
-        - 0.000005 * h
-    )
-
-    return np.clip(eta, 0.0, 0.90)
+    return eta
 
 
 # ============================================================
@@ -136,7 +96,7 @@ def calcular_trepada(h, V,
                      tolerancia=1e-8,
                      max_iter=200):
     """
-    Implementa el algoritmo iterativo de la clase para
+    Implementa el algoritmo iterativo para
     una altitud h y una velocidad TAS V.
 
     Devuelve:
@@ -186,7 +146,7 @@ def calcular_trepada(h, V,
         # Paso 4: polar
         # -----------------------------------
 
-        CD = coeficiente_CD(CL, M)
+        CD = coeficiente_CD(CL)
 
         # -----------------------------------
         # Paso 5: resistencia y potencia
@@ -281,7 +241,7 @@ def buscar_Vy(h,
     )
 
     # Evitamos trabajar exactamente en pérdida
-    V_min = 1.02 * Vs
+    V_min = 1.001 * Vs
 
     velocidades = np.arange(
         V_min,
@@ -320,8 +280,8 @@ def buscar_Vy(h,
 # ============================================================
 
 h_inicial = 0.0
-h_final = 9000.0
-dh = 250.0
+h_final = 10000.0
+dh = 1000.0
 
 altitudes = np.arange(
     h_inicial,
@@ -389,3 +349,363 @@ plt.grid(True)
 
 plt.tight_layout()
 plt.show()
+
+# ============================================================
+# CURVAS DE PERFORMANCE DE ASCENSO
+# ROC(V) y gamma(V) para diferentes altitudes
+# ============================================================
+
+rho0, _ = atmosfera_isa(0.0)
+altitudes_grafico = [
+    0,
+    3000,
+    6000,
+    9000
+]
+
+def TAS_a_EAS(V_tas, h):
+    """
+    Convierte True Airspeed a Equivalent Airspeed.
+
+    V_E = V_TAS * sqrt(rho/rho0)
+
+    Entradas:
+        V_tas : [m/s]
+        h     : [m]
+
+    Salida:
+        V_eas : [m/s]
+    """
+
+    rho, _ = atmosfera_isa(h)
+
+    return V_tas * np.sqrt(rho / rho0)
+
+
+def EAS_a_TAS(V_eas, h):
+    """
+    Convierte Equivalent Airspeed a True Airspeed.
+
+    V_TAS = V_E / sqrt(rho/rho0)
+    """
+
+    rho, _ = atmosfera_isa(h)
+
+    return V_eas / np.sqrt(rho / rho0)
+
+
+def calcular_curva_ascenso(
+    h,
+    Ve_max=150.0,
+    dVe=1,
+    solo_ascenso=True
+):
+    """
+    Calcula ROC y gamma en función de la velocidad equivalente
+    para una altitud determinada.
+
+    Parámetros
+    ----------
+    h : float
+        Altitud [m]
+
+    Ve_max : float
+        Máxima velocidad equivalente a analizar [m/s]
+
+    dVe : float
+        Paso de velocidades equivalentes [m/s]
+
+    solo_ascenso : bool
+        Si True, elimina los puntos con ROC < 0.
+        Esto hace que las curvas terminen cuando ROC = 0,
+        como en los gráficos de clase.
+
+    Devuelve
+    --------
+    Ve : ndarray
+        Velocidad equivalente [m/s]
+
+    Vtas : ndarray
+        Velocidad verdadera [m/s]
+
+    ROC : ndarray
+        Tasa de ascenso [m/s]
+
+    gamma : ndarray
+        Ángulo de ascenso [rad]
+    """
+
+    rho, _ = atmosfera_isa(h)
+
+    # --------------------------------------------------------
+    # Velocidad de pérdida equivalente
+    #
+    # Al trabajar en EAS:
+    #
+    # Vs_E = sqrt(2 W / (rho0 S CLmax))
+    #
+    # Es prácticamente independiente de la altitud.
+    # --------------------------------------------------------
+
+    Vs_eas = np.sqrt(
+        2.0 * W /
+        (rho0 * S * CL_max)
+    )
+
+    # Empezamos ligeramente por encima de pérdida
+    Ve_min = 1.02 * Vs_eas
+
+    Ve = np.arange(
+        Ve_min,
+        Ve_max + dVe,
+        dVe
+    )
+
+    ROC = np.full_like(Ve, np.nan, dtype=float)
+    gamma = np.full_like(Ve, np.nan, dtype=float)
+    Vtas = np.full_like(Ve, np.nan, dtype=float)
+
+    for i, Ve_i in enumerate(Ve):
+
+        # La aerodinámica debe calcularse con TAS
+        Vtas_i = EAS_a_TAS(Ve_i, h)
+
+        Vtas[i] = Vtas_i
+
+        resultado = calcular_trepada(
+            h,
+            Vtas_i
+        )
+
+        ROC_i = resultado[0]
+        gamma_i = resultado[1]
+
+        # Si el punto no es válido, se deja NaN
+        if np.isnan(ROC_i):
+            continue
+
+        # Podemos eliminar la región de descenso
+        # para reproducir el estilo de la clase.
+        if solo_ascenso and ROC_i < 0:
+            continue
+
+        ROC[i] = ROC_i
+        gamma[i] = gamma_i
+
+    return Ve, Vtas, ROC, gamma
+
+
+
+# ============================================================
+# GRÁFICAS ROC(Ve) Y gamma(Ve)
+# ============================================================
+
+def graficar_performance_ascenso(
+    altitudes_grafico,
+    Ve_max=150.0,
+    dVe=1,
+    roc_unidad="m/min",
+    mostrar_maximos=True
+):
+
+    """
+    Genera:
+
+        1) ROC vs velocidad equivalente
+        2) gamma vs velocidad equivalente
+
+    para varias altitudes.
+
+    Parámetros
+    ----------
+    altitudes_grafico : iterable
+        Altitudes a representar [m]
+
+        Ejemplo:
+            [0, 1500, 3000, 4500]
+
+    Ve_max : float
+        Máxima EAS del gráfico [m/s]
+
+    dVe : float
+        Paso de velocidad [m/s]
+
+    roc_unidad : str
+        "m/s", "m/min" o "ft/min"
+
+    mostrar_maximos : bool
+        Marca sobre cada curva el punto de ROC máxima.
+    """
+
+    # Velocidad de pérdida equivalente
+    Vs_eas = np.sqrt(
+        2.0 * W /
+        (rho0 * S * CL_max)
+    )
+
+    # ========================================================
+    # FIGURA 1 - ROC vs Ve
+    # ========================================================
+
+    plt.figure(figsize=(8, 6))
+
+    for h in altitudes_grafico:
+
+        Ve, Vtas, ROC, gamma = calcular_curva_ascenso(
+            h,
+            Ve_max=Ve_max,
+            dVe=dVe,
+            solo_ascenso=True
+        )
+
+        # --------------------------------------------
+        # Conversión de unidades para ROC
+        # --------------------------------------------
+
+        if roc_unidad == "m/s":
+
+            ROC_plot = ROC
+            ylabel = r"$ROC$ [m/s]"
+
+        elif roc_unidad == "m/min":
+
+            ROC_plot = ROC * 60.0
+            ylabel = r"$ROC$ [m/min]"
+
+        elif roc_unidad == "ft/min":
+
+            ROC_plot = ROC * 196.8504
+            ylabel = r"$ROC$ [ft/min]"
+
+        else:
+            raise ValueError(
+                "roc_unidad debe ser "
+                "'m/s', 'm/min' o 'ft/min'"
+            )
+
+        plt.plot(
+            Ve,
+            ROC_plot,
+            label=f"{h:.0f} m"
+        )
+
+        # --------------------------------------------
+        # Punto de máxima tasa de ascenso
+        # --------------------------------------------
+
+        if mostrar_maximos and not np.all(np.isnan(ROC)):
+
+            i_max = np.nanargmax(ROC)
+
+            plt.plot(
+                Ve[i_max],
+                ROC_plot[i_max],
+                "o"
+            )
+
+    # Línea de pérdida equivalente
+    plt.axvline(
+        Vs_eas,
+        color="black",
+        linestyle="--",
+        linewidth=1.0,
+        label=r"$V_{S,E}$"
+    )
+
+    plt.xlabel(
+        r"Velocidad equivalente $V_e$ [m/s]"
+    )
+
+    plt.ylabel(ylabel)
+
+    plt.title(
+        "Performance de ascenso - Tasa de ascenso"
+    )
+
+    plt.grid(
+        True,
+        alpha=0.3
+    )
+
+    plt.legend()
+
+    plt.tight_layout()
+
+    plt.show()
+
+
+    # ========================================================
+    # FIGURA 2 - gamma vs Ve
+    # ========================================================
+
+    plt.figure(figsize=(8, 6))
+
+    for h in altitudes_grafico:
+
+        Ve, Vtas, ROC, gamma = calcular_curva_ascenso(
+            h,
+            Ve_max=Ve_max,
+            dVe=dVe,
+            solo_ascenso=True
+        )
+
+        gamma_deg = np.degrees(gamma)
+
+        plt.plot(
+            Ve,
+            gamma_deg,
+            label=f"{h:.0f} m"
+        )
+
+        # --------------------------------------------
+        # Marcar gamma correspondiente a ROC máxima
+        # --------------------------------------------
+
+        if mostrar_maximos and not np.all(np.isnan(ROC)):
+
+            i_max = np.nanargmax(ROC)
+
+            plt.plot(
+                Ve[i_max],
+                gamma_deg[i_max],
+                "o"
+            )
+
+    plt.axvline(
+        Vs_eas,
+        color="black",
+        linestyle="--",
+        linewidth=1.0,
+        label=r"$V_{S,E}$"
+    )
+
+    plt.xlabel(
+        r"Velocidad equivalente $V_e$ [m/s]"
+    )
+
+    plt.ylabel(
+        r"Ángulo de ascenso $\gamma$ [°]"
+    )
+
+    plt.title(
+        "Performance de ascenso - Ángulo de ascenso"
+    )
+
+    plt.grid(
+        True,
+        alpha=0.3
+    )
+
+    plt.legend()
+
+    plt.tight_layout()
+
+    plt.show()
+
+graficar_performance_ascenso(
+    altitudes_grafico,
+    Ve_max=150.0,
+    dVe=1,
+    roc_unidad="m/min",
+    mostrar_maximos=True
+)
