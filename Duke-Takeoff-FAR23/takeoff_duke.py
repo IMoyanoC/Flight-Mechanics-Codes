@@ -17,14 +17,14 @@ from takeoff_model import (
 # ==========================================================
 
 # CASO DE ESTUDIO: nivel del mar, ISA, pista seca de concreto, sin viento.
-altitud_aeropuerto_m = 489.0
+altitud_aeropuerto_m = 0 #489.0
 temperatura_c = 20.0
 presion_aeropuerto_pa = None  # None: presion ISA a la altitud indicada
 viento_frente_mps = 0.0       # positivo: frente; negativo: cola
 pendiente_pista_porcentaje = 0.0  # positivo: subida en sentido de despegue
 tipo_superficie = "concreto seco"
 mu_rodadura = 0.025           # clase/Roskam: concreto 0.02-0.03
-longitud_pista_disponible_m = 3000
+longitud_pista_disponible_m = 2280 #Pista más corta del aeropuerto
 
 
 # ==========================================================
@@ -34,19 +34,19 @@ longitud_pista_disponible_m = 3000
 # Correspondencia futura: Flight-Mechanics-Codes/Duke.py
 masa_despegue_kg = 3073.0  # M [kg], condicion del proyecto existente
 S_m2 = 19.780               # S [m2]
-CL_max_TO = 1.27            # CL_max preliminar del avion
+CL_max_TO = 2.35#1.27            # CL_max preliminar del avion
 CD0 = 0.026
-K = 0.0596
+K = 0.054
 
 CL_g = 0.40
 CD_g = CD0 + K * CL_g**2
 
 MAP_despegue_inhg = 40.0
 numero_motores = 2
-diametro_helice_m = 1.8796
+diametro_helice_m = 1.88
 eta_perfil_helice = 0.88
 
-# V_MC certificada del Duke en esta configuracion [m/s].
+# V_MC certificada del Duke en esta configuracion [m/s], ver POH.
 # Sin ella se calcula la distancia fisica al obstaculo, pero el chequeo completo
 # de velocidades FAR 23 queda marcado como pendiente.
 V_MC_mps = None

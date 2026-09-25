@@ -102,10 +102,9 @@ def atmosphere_at_airport(
     )
 
 
-# Correspondencia futura:
+
 # Flight-Mechanics-Codes/motor_tio541_2900rpm.py -> potencia_total_duke.
-# Coeficientes P(h)=a*h_kft^2+b*h_kft+c, un motor [hp], copiados de la
-# aproximacion publicada alli (valida solamente entre 0 y 22 kft).
+# Coeficientes P(h)=a*h_kft^2+b*h_kft+c,(valida solamente entre 0 y 22 kft).
 _ENGINE_POWER_COEFFICIENTS = {
     34.0: (-0.1565217391, 2.1964426877, 322.5782608696),
     36.0: (-0.1667419537, 2.2671372106, 338.7478260870),
