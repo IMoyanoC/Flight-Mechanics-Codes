@@ -12,17 +12,17 @@ Uso rápido desde otro archivo::
 
     from motor_tio541_2900rpm import potencia_motor, potencia_total_duke
 
-    p_un_motor = potencia_motor(15000, 40)       # hp, h en ft
+    p_un_motor = potencia_motor(15000, 40)       # hp, h en m
     p_dos_motores = potencia_total_duke(15000, 40)
 
-Para trabajar en metros::
+Para trabajar en pies::
 
-    p_un_motor = potencia_motor(4500, 40, unidad_altitud="m")
+    p_un_motor = potencia_motor(4500, 40, unidad_altitud="ft")
 
 La interpolación PCHIP reproduce toda la curva dibujada, incluido el tramo de
 caída de potencia próximo a la altitud crítica. La función
 ``potencia_cuadratica`` es una simplificación analítica y sólo se considera
-válida entre 0 y 22 000 ft.
+válida entre 0 y 22000 ft.
 
 Para extender exclusivamente la curva de 42 inHg por encima de 27 000 ft debe
 activarse explícitamente ``extrapolar_42=True``. La extrapolación conserva la
@@ -44,11 +44,12 @@ except ImportError:  # El modelo sigue funcionando mediante interpolación linea
 
 
 RPM = 2900
-MAPS_INHG = np.array([34.0, 36.0, 38.0, 40.0, 42.0])
+# Filas: MAP = 34, 36, 38, 40 y 42 inHg.
+MAPS_INHG = np.array([34.0, 36.0, 38.0, 40.0, 42.0]) 
+# Columnas: altitud de presión = 0, 1, ..., 27 miles de ft.
 ALTITUD_KFT = np.arange(0.0, 28.0, 1.0)
 
-# Filas: MAP = 34, 36, 38, 40 y 42 inHg.
-# Columnas: altitud de presión = 0, 1, ..., 27 miles de ft.
+
 # Potencia aproximada en hp para UN motor.
 POTENCIA_HP = np.array(
     [
@@ -241,9 +242,9 @@ def potencia_total_duke(
     altitud: float | np.ndarray,
     map_inhg: float | np.ndarray,
     *,
-    unidad_altitud: Literal["ft", "kft", "m"] = "ft",
+    unidad_altitud: Literal["ft", "kft", "m"] = "m",
     metodo: Literal["pchip", "lineal"] = "pchip",
-    extrapolar_42: bool = False,
+    extrapolar_42: bool = True,
 ) -> float | np.ndarray:
     """Potencia total en el eje de los DOS motores del Beechcraft Duke, en hp."""
     return 2.0 * potencia_motor(
@@ -365,11 +366,14 @@ def graficar_ajustes(
 
 
 if __name__ == "__main__":
-    print(f"Un motor:  h=15 000 ft, MAP=40 inHg -> {potencia_motor(15000, 40):.1f} hp")
-    print(f"Dos motores: h=15 000 ft, MAP=40 inHg -> {potencia_total_duke(15000, 40):.1f} hp")
+    print(f"Un motor:  h=15 000 ft, MAP=40 inHg -> {potencia_motor(5000, 42):.1f} hp")
+    print(f"Dos motores: h=15 000 ft, MAP=40 inHg -> {potencia_total_duke(5000, 42):.1f} hp")
     print(
         "Un motor extrapolado: h=30 000 ft, MAP=42 inHg -> "
-        f"{potencia_motor(30000, 42, extrapolar_42=True):.1f} hp"
+        f"{potencia_motor(3000, 42, extrapolar_42=True):.1f} hp"
     )
     graficar_ajustes("curvas_tio541_2900rpm.png", mostrar=False)
-    graficar_ajustes("curvas_tio541_2900rpm.pdf", mostrar=False)
+    #graficar_ajustes("curvas_tio541_2900rpm.pdf", mostrar=False)
+
+#Test
+print (potencia_motor(7000, 42,unidad_altitud="ft"))
