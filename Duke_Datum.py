@@ -22,8 +22,11 @@ Cm_ac_w = -0.016            # Coeficiente momento libre ala
 alabeo = np.radians(-4)     # Alabeo aerodinamico total [grados]
 delta_z_CL = 0.1            # Porque es ala baja
 
+#-----------Pesos de la aeronave [Kg]---------
+MTOW = 3073.0
+M_mt = 2795.0            # Masa aeronave con medio tanque de combustible y máxima payload [kg]
+
 #-----------Parámetros condición vuelo crucero---------
-M = 2795            # Masa aeronave con medio tanque de combustible y máxima payload [kg]
 V_crucero = 113.18  # Velocidad crucero [m/s]
 hc = 8850           # Altura crucero [m]
 x_cg = 0.3          # Posición centro de gravedad adimensionada con la CAM
@@ -54,30 +57,6 @@ N_p = 4       # número de palas
 Nn = 2        # número de barquillas
 dp = 2.286    # Diametro helice
 
-#------Curva de potencia HP----- (Definida cada 500 m desde 0 m)
-Pot_eje_alt = {
-    0:380,
-    500:380,
-    1000:380,
-    1500:380,
-    2000:380,
-    2500:380,
-    3000:380,
-    3500:380,
-    4000:380,
-    4500:375,
-    5000:370,
-    5500:365,
-    6000:360,
-    6500:353,
-    7000:345,
-    7500:320,
-    8000:300,
-    8500:275,
-    9000:255,
-    9500:235,
-    10000:220,
-}
 
 #DEFINICION DE PARAMETROS
 #PARAMETROS PLANTA ALAR (EQUIVALENTE)
@@ -117,8 +96,6 @@ taperv=0.45
 t_c_v=0.12
 CAMv=1.45
 sweep1_2v = sweep1_4v-(1/Av)*((1-taperv)/(1+taperv))
-
-
 
 #-------------Parametros extraidos de otros TPS---------
 #Parámetros del ala:

@@ -15,7 +15,7 @@ G = 9.80665  # m/s2
 R_AIR = 287.05287  # J/(kg K)
 GAMMA_AIR = 1.4
 T0_ISA = 288.15  # K
-P0_ISA = 101_325.0  # Pa
+P0_ISA = 101325.0  # Pa
 LAPSE = 0.0065  # K/m
 HP_TO_W = 745.699872
 FT_TO_M = 0.3048
@@ -392,6 +392,11 @@ def calculate_takeoff(
     s_takeoff = s_ground + s_air
     far23_factor = 1.0
     s_far23 = far23_factor * s_takeoff
+
+    #TIEMPOS POR TRAMO DE DESPEGUE
+    
+
+
 
     v_mc = aircraft.v_mc_mps
     if v_mc is None:

@@ -3,6 +3,8 @@
 
 from math import degrees
 
+from Duke_Datum import *
+
 from takeoff_model import (
     Aircraft,
     AirportConditions,
@@ -18,7 +20,7 @@ from takeoff_model import (
 
 # CASO DE ESTUDIO: nivel del mar, ISA, pista seca de concreto, sin viento.
 altitud_aeropuerto_m = 0 #489.0
-temperatura_c = 20.0
+temperatura_c = 15.0
 presion_aeropuerto_pa = None  # None: presion ISA a la altitud indicada
 viento_frente_mps = 0.0       # positivo: frente; negativo: cola
 pendiente_pista_porcentaje = 0.0  # positivo: subida en sentido de despegue
@@ -32,11 +34,10 @@ longitud_pista_disponible_m = 2280 #Pista más corta del aeropuerto
 # ==========================================================
 
 # Correspondencia futura: Flight-Mechanics-Codes/Duke.py
-masa_despegue_kg = 3073.0  # M [kg], condicion del proyecto existente
-S_m2 = 19.780               # S [m2]
-CL_max_TO = 2.35#1.27            # CL_max preliminar del avion
-CD0 = 0.026
-K = 0.054
+masa_despegue_kg = MTOW  # M [kg], condicion de máximo peso
+S_m2 = S             # Superficie de referencia (alar) [m2]
+CL_max_TO = CL_max          # CL_max preliminar del avion
+
 
 CL_g = 0.40
 CD_g = CD0 + K * CL_g**2

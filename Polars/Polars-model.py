@@ -13,13 +13,13 @@ from scipy.integrate import quad
 #==========================================================================
 
 #------Parametros De Aeronave-----
-from Duke import *
+from Duke_Datum import *
+from ISA_Model import rho
 #------Parametros Generales-----
+M=MTOW
 
 w = M * g # Peso de la aeronave
-def rho(h):
-    rho = 1.225 * (1-2.2558e-5 * h)**4.2559
-    return rho
+
 
 #CURVA CL(al_pha) del avión completo
 K_I = (1 + 2.15 * (b_f / b)) * (S_net / S) + (mt.pi/2) * (b_f ** 2) / (CLa_w * S)
