@@ -365,7 +365,7 @@ def graficar_ajustes(
     return fig, ax
 
 
-if __name__ == "__main__":
+if __name__ == "__pepe__":
     print(f"Un motor:  h=15 000 ft, MAP=40 inHg -> {potencia_motor(5000, 42):.1f} hp")
     print(f"Dos motores: h=15 000 ft, MAP=40 inHg -> {potencia_total_duke(5000, 42):.1f} hp")
     print(
@@ -376,4 +376,5 @@ if __name__ == "__main__":
     #graficar_ajustes("curvas_tio541_2900rpm.pdf", mostrar=False)
 
 #Test
-print (potencia_motor(7000, 42,unidad_altitud="ft"))
+#for i in range(1, 9000, 1000):
+#    print (potencia_motor(i, 41))

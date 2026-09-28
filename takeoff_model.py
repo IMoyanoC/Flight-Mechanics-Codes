@@ -10,6 +10,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from math import acos, asin, atan, cos, isfinite, pi, sin, sqrt, tan
 
+from motor_tio541_2900rpm import MAPS_INHG, potencia_motor
+#from eficiencia_helice import eficiencia_helice
+from Duke_Datum import *
+from ISA_Model import ISA
 
 G = 9.80665  # m/s2
 R_AIR = 287.05287  # J/(kg K)
@@ -74,25 +78,24 @@ def atmosphere_at_airport(
     temperature_c: float,
     pressure_pa: float | None = None,
 ) -> Atmosphere:
-    """
-    Troposfera minima: presion ISA a elevacion y densidad con OAT.
-    Correspondencia futura: Flight-Mechanics-Codes/Climb.py -> atmosfera_isa.
-    La version local admite temperatura real y presion indicada opcional.
-    """
-    if not -500.0 <= altitude_m < 11_000.0:
-        raise ValueError("La altitud debe estar entre -500 y 11 000 m.")
-    temperature_k = temperature_c + 273.15
+
+    if not 0.0 <= altitude_m < 11_000.0:
+        raise ValueError("La altitud debe estar entre 0 y 11 000 m.")
+    if temperature_c is None:
+        temperature_k = ISA().tk(altitude_m, "T")
+    else:
+        temperature_k = temperature_c + 273.15
     if temperature_k <= 0.0:
         raise ValueError("La temperatura absoluta debe ser positiva.")
     if pressure_pa is None:
-        t_isa = T0_ISA - LAPSE * altitude_m
-        pressure_pa = P0_ISA * (t_isa / T0_ISA) ** (G / (R_AIR * LAPSE))
+    #    t_isa = T0_ISA - LAPSE * altitude_m    
+    #    pressure_pa = P0_ISA * (t_isa / T0_ISA) ** (G / (R_AIR * LAPSE))
+        pressure_pa = ISA().tk(altitude_m, "P", T=temperature_k)    
     if pressure_pa <= 0.0:
-        raise ValueError("La presion debe ser positiva.")
-    rho = pressure_pa / (R_AIR * temperature_k)
-    pressure_altitude_m = T0_ISA / LAPSE * (
-        1.0 - (pressure_pa / P0_ISA) ** (R_AIR * LAPSE / G)
-    )
+        raise ValueError("La presion es absoluta y debe ser positiva.")
+    #rho = pressure_pa / (R_AIR * temperature_k)
+    rho = ISA().tk(altitude_m, "rho", T=temperature_k, P=pressure_pa)
+    pressure_altitude_m = ISA().altitude_from_pressure(pressure_pa)
     return Atmosphere(
         temperature_k=temperature_k,
         pressure_pa=pressure_pa,
@@ -105,13 +108,13 @@ def atmosphere_at_airport(
 
 # Flight-Mechanics-Codes/motor_tio541_2900rpm.py -> potencia_total_duke.
 # Coeficientes P(h)=a*h_kft^2+b*h_kft+c,(valida solamente entre 0 y 22 kft).
-_ENGINE_POWER_COEFFICIENTS = {
+"""_ENGINE_POWER_COEFFICIENTS = {
     34.0: (-0.1565217391, 2.1964426877, 322.5782608696),
     36.0: (-0.1667419537, 2.2671372106, 338.7478260870),
     38.0: (-0.1869565217, 2.5754940711, 354.6913043478),
     40.0: (-0.1789102202, 2.4488706945, 371.1478260870),
     42.0: (-0.1548277809, 1.8113495200, 388.9260869565),
-}
+}"""
 
 
 def shaft_power_available(
@@ -123,26 +126,33 @@ def shaft_power_available(
     if engine_count <= 0:
         raise ValueError("El numero de motores debe ser positivo.")
     h_kft = altitude_m / FT_TO_M / 1000.0
-    if not 0.0 <= h_kft <= 22.0:
-        raise ValueError("La curva cuadratica local es valida entre 0 y 22 kft.")
-    maps = sorted(_ENGINE_POWER_COEFFICIENTS)
-    if not maps[0] <= map_inhg <= maps[-1]:
+    if not 0.0 <= h_kft <= 27.0:
+        raise ValueError("La curva cuadratica local es valida entre 0 y 27 kft.")
+#    maps = sorted(_ENGINE_POWER_COEFFICIENTS)
+    maps = sorted(MAPS_INHG)
+#    if not maps[0] <= map_inhg <= maps[-1]:
+    if not 34.0 <= map_inhg <= 42.0:
         raise ValueError("MAP debe estar entre 34 y 42 inHg.")
-    upper = next(value for value in maps if value >= map_inhg)
-    lower = next(value for value in reversed(maps) if value <= map_inhg)
+#    upper = next(value for value in maps if value >= map_inhg)
+#    lower = next(value for value in reversed(maps) if value <= map_inhg)
 
-    def evaluate(map_value: float) -> float:
-        a, b, c = _ENGINE_POWER_COEFFICIENTS[map_value]
-        return a * h_kft**2 + b * h_kft + c
-
-    if upper == lower:
-        hp_per_engine = evaluate(lower)
-    else:
-        fraction = (map_inhg - lower) / (upper - lower)
-        hp_per_engine = evaluate(lower) + fraction * (
-            evaluate(upper) - evaluate(lower)
-        )
+#    def evaluate(map_value: float) -> float:
+#        a, b, c = _ENGINE_POWER_COEFFICIENTS[map_value]
+#        return a * h_kft**2 + b * h_kft + c
+#
+#    if upper == lower:
+#        hp_per_engine = evaluate(lower)
+#    else:
+#        fraction = (map_inhg - lower) / (upper - lower)
+#        hp_per_engine = evaluate(lower) + fraction * (
+#            evaluate(upper) - evaluate(lower)
+#        )
+    hp_per_engine = potencia_motor(altitude_m, map_inhg)
+    if hp_per_engine <= 0.0:
+        raise ValueError("La potencia del motor debe ser positiva.")
     return hp_per_engine * engine_count * HP_TO_W, hp_per_engine
+
+    
 
 
 def _real_cuberoot(value: float) -> float:
@@ -157,18 +167,14 @@ def propeller_efficiency_and_thrust(
     diameter_m: float,
     profile_efficiency: float,
 ) -> tuple[float, float]:
-    """Modelo Solies usado en Flight-Mechanics-Codes/eficiencia_helice.py.
 
-    En V=0 se usa su limite de empuje estatico por cantidad de movimiento.
-    Para viento de cola al inicio, la formulacion 1-D de clase admite V con
-    signo; el modelo propulsivo se evalua con su magnitud.
-    """
     if density_kgm3 <= 0.0 or total_shaft_power_w <= 0.0:
         raise ValueError("Densidad y potencia deben ser positivas.")
     if engine_count <= 0 or diameter_m <= 0.0:
         raise ValueError("Numero de motores y diametro deben ser positivos.")
     if not 0.0 < profile_efficiency <= 1.0:
         raise ValueError("La eficiencia de perfil debe estar en (0, 1].")
+
     speed = abs(airspeed_mps)
     disk_area = pi * diameter_m**2 / 4.0
     power_per_engine = total_shaft_power_w / engine_count

@@ -1,7 +1,4 @@
 import numpy as np
-#------Parametros Aerodinámicos-----
-CL_max = 1.27
-
 #------Polar preliminar-----
 CD0 = 0.026                    # Zero-lift drag coefficient
 K = 0.0596                      # Induced drag factor
@@ -32,7 +29,12 @@ hc = 8850           # Altura crucero [m]
 x_cg = 0.3          # Posición centro de gravedad adimensionada con la CAM
 x_ac = 0.248        # Posición centro aerodinámico adimensionada con la CAM
 
-
+#------Parametros Aerodinámicos-----
+V_stall_cruise = 64*0.514444      # Velocidad de perdida a 0 grados de deflexión [m/s]
+V_stall_15 = 59*0.514444          # Velocidad de perdida a 15 grados de deflexión [m/s]
+CL_max = 1.27#(MTOW*9.806)/(0.5*1.225*(V_stall_cruise**2)*S)
+CL_max_TO = (MTOW*9.806)/(0.5*1.225*(V_stall_15**2)*S) # CL_max en despegue
+print(CL_max, CL_max_TO)
 #------------Parámetros del fuselaje------------
 l_f = 10.8    # longitud del fuselaje
 b_f = 1.65    # ancho del fuselaje

@@ -45,8 +45,8 @@ def densidad_isa(h: float | np.ndarray) -> float | np.ndarray:
 
 
 def eficiencia_helice(
-    V: float | np.ndarray,
     h: float | np.ndarray,
+    V: float | np.ndarray,
 ) -> float | np.ndarray:
     """Devuelve la eficiencia eta(V, h) para V > 0 y 0 <= h <= 10 000.
 
@@ -88,4 +88,5 @@ def eficiencia_helice(
 
 
 if __name__ == "__main__":
-    print(f"eta(120 m/s, 3000 m) = {eficiencia_helice(120.0, 3000.0):.8f}")
+    print(f"eta(120 m/s, 3000 m) = {eficiencia_helice(3000.0,120.0):.8f}")
+    

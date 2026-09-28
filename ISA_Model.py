@@ -60,6 +60,7 @@ def rho(h):
 """
 
 
+
 class ISA:
 
     # Constantes ISA
@@ -204,3 +205,28 @@ class ISA:
             parametro: resultados[parametro]
             for parametro in parametros
         }
+
+    def altitude_from_pressure(self, P):
+        """Calcula la altitud a partir de la presión [Pa]."""
+        P = float(P)
+
+        if not isfinite(P):
+            raise ValueError("La presión debe ser un número finito.")
+
+        if P <= 0:
+            raise ValueError("La presión debe ser mayor que 0 Pa.")
+
+        h = self.T_0 / self.LAPSE_T * (
+            (P / self.P_0) ** (-self.R * self.LAPSE_T / self.g_0) - 1
+        )
+
+        if not 0.0 <= h <= self.H_MAX:
+            raise ValueError(
+                "La presión corresponde a una altitud fuera del rango "
+                "definido por el modelo: 0 <= h <= 11000 m."
+            )
+
+        if self.unidades == "ft":
+            h /= 0.3048
+
+        return h

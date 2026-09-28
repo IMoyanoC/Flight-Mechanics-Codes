@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-"""Calculo editable de distancia de despegue del Beechcraft Duke 60."""
+"""Calculo de distancia de despegue del Beechcraft Duke 60."""
 
 from math import degrees
 
@@ -35,17 +34,16 @@ longitud_pista_disponible_m = 2280 #Pista más corta del aeropuerto
 
 # Correspondencia futura: Flight-Mechanics-Codes/Duke.py
 masa_despegue_kg = MTOW  # M [kg], condicion de máximo peso
-S_m2 = S             # Superficie de referencia (alar) [m2]
-CL_max_TO = CL_max          # CL_max preliminar del avion
+S_m2 = S             # Superficie de referencia (alar) [m2]          
 
 
-CL_g = 0.40
+CL_g = mu_rodadura/(2*K) #0.4
 CD_g = CD0 + K * CL_g**2
 
-MAP_despegue_inhg = 40.0
+MAP_despegue_inhg = 41.0
 numero_motores = 2
 diametro_helice_m = 1.88
-eta_perfil_helice = 0.88
+eta_perfil_helice = 0.88 #SE CONSIDERA CONSTANTE, aunque en realidad depende de la velocidad y del paso de la hélice.
 
 # V_MC certificada del Duke en esta configuracion [m/s], ver POH.
 # Sin ella se calcula la distancia fisica al obstaculo, pero el chequeo completo
@@ -123,6 +121,7 @@ def main() -> None:
     print(f"mu_g:                     {mu_rodadura:.4f}")
     print(f"Masa de despegue:         {masa_despegue_kg:.2f} kg")
     print(f"Peso de despegue W:       {result['weight_n']:.2f} N")
+    print(f"CL_max TO:                {CL_max_TO:.4f}")
 
     print("\nVELOCIDADES")
     print("-----------")
