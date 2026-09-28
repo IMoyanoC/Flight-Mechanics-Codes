@@ -43,7 +43,7 @@ CD_g = CD0 + K * CL_g**2
 MAP_despegue_inhg = 41.0
 numero_motores = 2
 diametro_helice_m = 1.88
-eta_perfil_helice = 0.88 #SE CONSIDERA CONSTANTE, aunque en realidad depende de la velocidad y del paso de la hélice.
+eta_perfil_helice = 0.88  # Se usa para el empuje estatico en V=0.
 
 # V_MC certificada del Duke en esta configuracion [m/s], ver POH.
 # Sin ella se calcula la distancia fisica al obstaculo, pero el chequeo completo
@@ -57,7 +57,7 @@ V_MC_mps = None
 
 metodo_rodaje = "general"  # "general" (punto medio) o "aproximado"
 numero_intervalos = 100
-tiempo_rotacion_s = 1.0     # clase/Roskam: avion liviano
+tiempo_rotacion_s = 2.0     # estimacion conservadora para un avion del tamano del Duke
 factor_VR_VS = 1.10         # Roskam 10.3.3.1, estimacion preliminar
 factor_VLOF_VS = 1.15       # Roskam 10.3.3.1, estimacion preliminar
 factor_V50_VS = 1.20        # FAR 23 multiengine, Roskam tabla 10.1
@@ -147,10 +147,11 @@ def main() -> None:
     ):
         state = result[key]
         print(
-            f"{label:10s}: T={state['thrust_n']:8.2f} N, "
-            f"L={state['lift_n']:8.2f} N, D={state['drag_n']:7.2f} N, "
-            f"a_g={state['acceleration_mps2']:.4f} m/s2"
+            f"{label:10s}: eta={state['eta_prop']:.5f}, "
+            f"T={state['thrust_n']:8.2f} N, "
+            f"L={state['lift_n']:8.2f} N, D={state['drag_n']:7.2f} N"
         )
+        print(f"{'':10s}  a_g={state['acceleration_mps2']:.4f} m/s2")
     print(
         "Rango a_g integracion:    "
         f"{result['min_ground_acceleration_mps2']:.4f} a "
@@ -158,7 +159,7 @@ def main() -> None:
     )
     print(f"Delta CL transicion:      {result['delta_CL']:.5f}")
     print(f"CL_TR (Ec. 12):           {result['CL_TR']:.5f}")
-    print(f"CL / CD en V_TR:          {result['CL_at_V_TR']:.5f} / {result['CD_TR']:.5f}")
+    print(f"CL_TR / CD_TR:            {result['CL_TR']:.5f} / {result['CD_TR']:.5f}")
     print(f"eta helice en V_TR:       {result['eta_prop_TR']:.5f}")
     print(
         f"T / D en V_TR:           {result['thrust_TR_n']:.2f} / "
@@ -175,15 +176,22 @@ def main() -> None:
     print("\nDISTANCIAS")
     print("----------")
     print(f"Nariz en pista s_NGR:     {result['s_NGR_m']:.3f} m")
+    print(f"Tiempo rodaje t_NGR:      {result['t_NGR_s']:.3f} s")
     print(f"Rotacion s_R:             {result['s_R_m']:.3f} m")
+    print(f"Tiempo rotacion t_R:      {result['t_R_s']:.3f} s")
     print(f"Transicion s_TR:          {result['s_TR_m']:.3f} m")
+    print(f"Tiempo transicion t_TR:   {result['t_TR_s']:.3f} s")
     print(f"Trepada s_CL:             {result['s_CL_m']:.3f} m")
+    print(f"Tiempo trepada t_CL:      {result['t_CL_s']:.3f} s")
     print(f"Distancia en suelo s_G:   {result['s_G_m']:.3f} m")
+    print(f"Tiempo en suelo t_G:      {result['t_G_s']:.3f} s")
     print(f"Distancia en aire s_A:    {result['s_A_m']:.3f} m")
+    print(f"Tiempo en aire t_A:       {result['t_A_s']:.3f} s")
 
     print("\nDISTANCIA TOTAL DE DESPEGUE")
     print("---------------------------")
     print(f"s_TO =                    {result['s_TO_m']:.3f} m")
+    print(f"Tiempo total t_TO:        {result['t_TO_s']:.3f} s")
 
     print("\nDISTANCIA REQUERIDA FAR 23")
     print("--------------------------")

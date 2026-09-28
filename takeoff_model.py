@@ -1,8 +1,8 @@
 """
 Distancia de despegue: clase + Roskam, capitulo 10.
 Las interfaces locales de potencia y helice reproducen la 
-forma minima de los modelos existentes para que este proyecto
-pueda ejecutarse sin NumPy/SciPy.
+forma minima de los modelos existentes; la eficiencia de helice
+se calcula con eficiencia_helice.py.
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from math import acos, asin, atan, cos, isfinite, pi, sin, sqrt, tan
 
 from motor_tio541_2900rpm import MAPS_INHG, potencia_motor
-#from eficiencia_helice import eficiencia_helice
+from eficiencia_helice import eficiencia_helice
 from Duke_Datum import *
 from ISA_Model import ISA
 
@@ -57,7 +57,7 @@ class Aircraft:
 class ModelOptions:
     ground_method: str = "general"
     intervals: int = 100
-    rotation_time_s: float = 1.0
+    rotation_time_s: float = 2.0
     vr_over_vs: float = 1.10
     vlof_over_vs: float = 1.15
     v50_over_vs: float = 1.20
@@ -105,18 +105,6 @@ def atmosphere_at_airport(
     )
 
 
-
-# Flight-Mechanics-Codes/motor_tio541_2900rpm.py -> potencia_total_duke.
-# Coeficientes P(h)=a*h_kft^2+b*h_kft+c,(valida solamente entre 0 y 22 kft).
-"""_ENGINE_POWER_COEFFICIENTS = {
-    34.0: (-0.1565217391, 2.1964426877, 322.5782608696),
-    36.0: (-0.1667419537, 2.2671372106, 338.7478260870),
-    38.0: (-0.1869565217, 2.5754940711, 354.6913043478),
-    40.0: (-0.1789102202, 2.4488706945, 371.1478260870),
-    42.0: (-0.1548277809, 1.8113495200, 388.9260869565),
-}"""
-
-
 def shaft_power_available(
     altitude_m: float,
     map_inhg: float,
@@ -128,25 +116,10 @@ def shaft_power_available(
     h_kft = altitude_m / FT_TO_M / 1000.0
     if not 0.0 <= h_kft <= 27.0:
         raise ValueError("La curva cuadratica local es valida entre 0 y 27 kft.")
-#    maps = sorted(_ENGINE_POWER_COEFFICIENTS)
     maps = sorted(MAPS_INHG)
-#    if not maps[0] <= map_inhg <= maps[-1]:
+
     if not 34.0 <= map_inhg <= 42.0:
         raise ValueError("MAP debe estar entre 34 y 42 inHg.")
-#    upper = next(value for value in maps if value >= map_inhg)
-#    lower = next(value for value in reversed(maps) if value <= map_inhg)
-
-#    def evaluate(map_value: float) -> float:
-#        a, b, c = _ENGINE_POWER_COEFFICIENTS[map_value]
-#        return a * h_kft**2 + b * h_kft + c
-#
-#    if upper == lower:
-#        hp_per_engine = evaluate(lower)
-#    else:
-#        fraction = (map_inhg - lower) / (upper - lower)
-#        hp_per_engine = evaluate(lower) + fraction * (
-#            evaluate(upper) - evaluate(lower)
-#        )
     hp_per_engine = potencia_motor(altitude_m, map_inhg)
     if hp_per_engine <= 0.0:
         raise ValueError("La potencia del motor debe ser positiva.")
@@ -155,12 +128,9 @@ def shaft_power_available(
     
 
 
-def _real_cuberoot(value: float) -> float:
-    return value ** (1.0 / 3.0) if value >= 0.0 else -(-value) ** (1.0 / 3.0)
-
-
 def propeller_efficiency_and_thrust(
     airspeed_mps: float,
+    altitude_m: float,
     density_kgm3: float,
     total_shaft_power_w: float,
     engine_count: int,
@@ -184,17 +154,7 @@ def propeller_efficiency_and_thrust(
         ) ** (2.0 / 3.0)
         return 0.0, engine_count * thrust_per_engine
 
-    q = profile_efficiency * power_per_engine / (
-        2.0 * density_kgm3 * disk_area * speed**3
-    )
-    delta = q**2 / 4.0 + q / 27.0
-    center = q / 2.0 + 1.0 / 27.0
-    x = (
-        _real_cuberoot(center + sqrt(delta))
-        + _real_cuberoot(center - sqrt(delta))
-        - 2.0 / 3.0
-    )
-    eta = profile_efficiency / (1.0 + x)
+    eta = eficiencia_helice(altitude_m, speed)
     thrust = eta * total_shaft_power_w / speed
     return eta, thrust
 
@@ -267,6 +227,7 @@ def calculate_takeoff(
         drag = q * aircraft.wing_area_m2 * aircraft.cd_ground
         eta, thrust = propeller_efficiency_and_thrust(
             v_air,
+            atmosphere.pressure_altitude_m,
             rho,
             total_power_w,
             aircraft.engine_count,
@@ -299,6 +260,7 @@ def calculate_takeoff(
     if options.ground_method == "general":
         dv = (vr - v_start) / options.intervals
         s_ngr = 0.0
+        t_ngr = 0.0
         for index in range(options.intervals):
             v_mid = v_start + (index + 0.5) * dv
             state = ground_state(v_mid)
@@ -307,10 +269,12 @@ def calculate_takeoff(
                 raise ValueError(
                     f"Aceleracion no positiva durante s_NGR en V={v_mid:.3f} m/s."
                 )
-            ds = state["V_ground_mps"] * dv / acceleration
+            dt = dv / acceleration
+            ds = state["V_ground_mps"] * dt
             if ds < 0.0:
                 raise ValueError("La integracion produjo una distancia negativa.")
             s_ngr += ds
+            t_ngr += dt
             state["cumulative_distance_m"] = s_ngr
             profile.append(state)
     else:
@@ -322,6 +286,7 @@ def calculate_takeoff(
         if state["acceleration_mps2"] <= 0.0:
             raise ValueError("Aceleracion no positiva en 0.74 V_R.")
         s_ngr = vr**2 / (2.0 * state["acceleration_mps2"])
+        t_ngr = vr / state["acceleration_mps2"]
         state["cumulative_distance_m"] = s_ngr
         profile.append(state)
 
@@ -335,9 +300,9 @@ def calculate_takeoff(
 
     # Clase, ejemplo 2: velocidad media entre lift-off y obstaculo.
     v_transition = 0.5 * (vlof + v50)
-    ratio = v_transition / vs
-    delta_cl = 0.5 * (ratio**2 - 1.0) * (
-        aircraft.cl_max_takeoff * ((1.0 / ratio) ** 2 - 0.53) + 0.38
+    lof_ratio = vlof / vs
+    delta_cl = 0.5 * (lof_ratio**2 - 1.0) * (
+        aircraft.cl_max_takeoff * ((1.0 / lof_ratio) ** 2 - 0.53) + 0.38
     )
     if delta_cl <= 0.0:
         raise ValueError("Delta CL de transicion no positivo.")
@@ -353,7 +318,7 @@ def calculate_takeoff(
         2.0 * weight_n
         / (rho * v_transition**2 * aircraft.wing_area_m2)
     )
-    cd_transition = drag_coefficient(cl_at_v_transition, aircraft)
+    cd_transition = drag_coefficient(cl_transition, aircraft)
     drag_transition = (
         0.5
         * rho
@@ -363,6 +328,7 @@ def calculate_takeoff(
     )
     eta_transition, thrust_transition = propeller_efficiency_and_thrust(
         v_transition,
+        atmosphere.pressure_altitude_m,
         rho,
         total_power_w,
         aircraft.engine_count,
@@ -395,7 +361,13 @@ def calculate_takeoff(
 
     s_ground = s_ngr + s_rotation
     s_air = s_transition + s_climb
+    t_transition = s_transition / v_transition
+    # No se especifica una velocidad de trepada; se mantiene V_TR constante.
+    t_climb = s_climb / v_transition
+    t_ground = t_ngr + options.rotation_time_s
+    t_air = t_transition + t_climb
     s_takeoff = s_ground + s_air
+    t_takeoff = t_ground + t_air
     far23_factor = 1.0
     s_far23 = far23_factor * s_takeoff
 
@@ -437,12 +409,19 @@ def calculate_takeoff(
         "h_TR_m": h_transition,
         "obstacle_phase": obstacle_phase,
         "s_NGR_m": s_ngr,
+        "t_NGR_s": t_ngr,
         "s_R_m": s_rotation,
+        "t_R_s": options.rotation_time_s,
         "s_TR_m": s_transition,
+        "t_TR_s": t_transition,
         "s_CL_m": s_climb,
+        "t_CL_s": t_climb,
         "s_G_m": s_ground,
+        "t_G_s": t_ground,
         "s_A_m": s_air,
+        "t_A_s": t_air,
         "s_TO_m": s_takeoff,
+        "t_TO_s": t_takeoff,
         "far23_factor": far23_factor,
         "s_FAR23_m": s_far23,
         "far23_speed_compliant": far23_speed_compliant,
