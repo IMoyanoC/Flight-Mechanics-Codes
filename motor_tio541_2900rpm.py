@@ -24,10 +24,10 @@ caída de potencia próximo a la altitud crítica. La función
 ``potencia_cuadratica`` es una simplificación analítica y sólo se considera
 válida entre 0 y 22000 ft.
 
-Para extender exclusivamente la curva de 42 inHg por encima de 27 000 ft debe
-activarse explícitamente ``extrapolar_42=True``. La extrapolación conserva la
-pendiente del último tramo digitalizado (26--27 kft), por lo que constituye una
-hipótesis de cálculo y no información respaldada por la carta del fabricante.
+Entre 22 000 y 27 000 ft se interpola linealmente entre los datos digitalizados.
+Por encima de 27 000 ft, ``potencia_motor`` usa la extrapolación de MAP=42 inHg
+independientemente del MAP solicitado; esta hipótesis no está respaldada por la
+carta del fabricante.
 """
 
 from __future__ import annotations
@@ -47,7 +47,7 @@ RPM = 2900
 # Filas: MAP = 34, 36, 38, 40 y 42 inHg.
 MAPS_INHG = np.array([34.0, 36.0, 38.0, 40.0, 42.0]) 
 # Columnas: altitud de presión = 0, 1, ..., 27 miles de ft.
-ALTITUD_KFT = np.arange(0.0, 28.0, 1.0)
+ALTITUD_KFT = np.arange(0.0,28.0, 1.0)
 
 
 # Potencia aproximada en hp para UN motor.
@@ -65,13 +65,13 @@ POTENCIA_HP = np.array(
         ],
         [
             353, 356, 359, 361, 363, 364, 365, 365, 364, 363, 362, 360,
-            358, 356, 353, 350, 347, 344, 340, 336, 332, 327, 322, 316,
-            309, 301, 289, 275,
+            359, 357, 354, 352, 349, 347, 343, 340, 336, 332, 329, 325,
+            318, 309, 289, 275,
         ],
         [
             370, 373, 375, 377, 379, 380, 380, 380, 380, 379, 378, 376,
-            374, 372, 370, 367, 364, 361, 357, 353, 349, 344, 339, 333,
-            325, 313, 292, 275,
+            374, 372, 370, 368, 366, 363, 359, 356, 352, 347, 343, 337,
+            329, 313, 292, 275,
         ],
         [
             389, 391, 392, 393, 394, 394, 394, 394, 393, 392, 391, 390,
@@ -90,22 +90,23 @@ PENDIENTE_EXTRAPOLACION_42_HP_POR_KFT = (
 ALTITUD_POTENCIA_NULA_42_KFT = ALTITUD_KFT[-1] - (
     POTENCIA_HP[-1, -1] / PENDIENTE_EXTRAPOLACION_42_HP_POR_KFT
 )
+ALTITUD_MAX_EXTRAPOLACION_KFT = 35.0
 
 # P(h) = a*h^2 + b*h + c, con h en miles de ft y P en hp.
 # Ajustes por mínimos cuadrados de los puntos entre 0 y 22 kft.
 COEFICIENTES_CUADRATICOS = {
     34.0: np.array([-0.1565217391, 2.1964426877, 322.5782608696]),
     36.0: np.array([-0.1667419537, 2.2671372106, 338.7478260870]),
-    38.0: np.array([-0.1869565217, 2.5754940711, 354.6913043478]),
-    40.0: np.array([-0.1789102202, 2.4488706945, 371.1478260870]),
+    38.0: np.array([-0.1636363636, 2.3173913043, 355.1173913043]),
+    40.0: np.array([-0.1626764540, 2.2547713156, 371.4739130435]),
     42.0: np.array([-0.1548277809, 1.8113495200, 388.9260869565]),
 }
 
 AJUSTE_CUADRATICO_RMSE_HP = {
     34.0: 0.524,
     36.0: 1.135,
-    38.0: 0.905,
-    40.0: 0.580,
+    38.0: 1.108,
+    40.0: 0.780,
     42.0: 0.497,
 }
 
@@ -140,10 +141,6 @@ def _validar_dominio(
         raise ValueError(
             "La carta termina en 27 000 ft. Para continuar linealmente la curva "
             "de 42 inHg usa extrapolar_42=True."
-        )
-    if np.any(fuera_de_carta & ~np.isclose(map_inhg, 42.0)):
-        raise ValueError(
-            "Por encima de 27 000 ft sólo se implementó la extrapolación de MAP=42 inHg."
         )
     if np.any(h_kft > ALTITUD_POTENCIA_NULA_42_KFT):
         raise ValueError(
@@ -182,8 +179,10 @@ def potencia_motor(
     """Devuelve la potencia aproximada de UN motor, en hp.
 
     Los argumentos ``altitud`` y ``map_inhg`` pueden ser escalares o arrays
-    compatibles mediante broadcasting. Primero se interpola cada curva en
-    altitud y luego linealmente entre las curvas de MAP.
+    compatibles mediante broadcasting. Hasta 22 000 ft se usa el método
+    seleccionado; entre 22 000 y 27 000 ft se interpola linealmente en altitud.
+    Por encima de 27 000 ft se aplica la extrapolación de MAP=42 inHg,
+    independientemente del MAP solicitado.
 
     Parameters
     ----------
@@ -194,12 +193,12 @@ def potencia_motor(
     unidad_altitud:
         ``"ft"`` (por defecto), ``"kft"`` o ``"m"``.
     metodo:
-        ``"pchip"`` para curva suave y sin oscilaciones; ``"lineal"`` para
+        ``"pchip"`` para curva suave hasta 22 000 ft; ``"lineal"`` para
         interpolar directamente entre los puntos digitalizados.
     extrapolar_42:
-        Si es ``True``, permite continuar la curva de 42 inHg por encima de
-        27 000 ft con una recta de pendiente -19 hp/kft. Esta opción sólo se
-        admite para MAP=42 inHg y mientras la potencia calculada sea positiva.
+        Si es ``True``, permite continuar por encima de 27 000 ft con la recta
+        de MAP=42 inHg (pendiente -19 hp/kft), independientemente del MAP
+        solicitado. Sólo se admite mientras la potencia sea positiva.
     """
     h_kft, map_array = np.broadcast_arrays(
         _altitud_a_kft(altitud, unidad_altitud),
@@ -227,14 +226,28 @@ def potencia_motor(
     else:
         raise ValueError("metodo debe ser 'pchip' o 'lineal'.")
 
-    resultado = _interpolar_entre_maps(valores_por_map, map_array)
-    fuera_de_carta = h_kft > ALTITUD_KFT[-1]
+    resultado = np.asarray(_interpolar_entre_maps(valores_por_map, map_array)).reshape(-1)
+    mapa_plano = map_array.ravel()
+    tramo_lineal = (h_plano > 22.0) & (h_plano <= ALTITUD_KFT[-1])
+    if np.any(tramo_lineal):
+        valores_lineales = np.vstack(
+            [
+                np.interp(h_plano[tramo_lineal], ALTITUD_KFT, fila)
+                for fila in POTENCIA_HP
+            ]
+        )
+        resultado[tramo_lineal] = _interpolar_entre_maps(
+            valores_lineales,
+            mapa_plano[tramo_lineal],
+        )
+
+    fuera_de_carta = h_plano > ALTITUD_KFT[-1]
     if np.any(fuera_de_carta):
-        resultado = np.asarray(resultado)
         resultado[fuera_de_carta] = POTENCIA_HP[-1, -1] + (
             PENDIENTE_EXTRAPOLACION_42_HP_POR_KFT
-            * (h_kft[fuera_de_carta] - ALTITUD_KFT[-1])
+            * (h_plano[fuera_de_carta] - ALTITUD_KFT[-1])
         )
+    resultado = resultado.reshape(h_kft.shape)
     return float(resultado) if resultado.ndim == 0 else resultado
 
 
@@ -272,7 +285,7 @@ def potencia_cuadratica(
         _altitud_a_kft(altitud, unidad_altitud),
         np.asarray(map_inhg, dtype=float),
     )
-    if np.any((h_kft < 0.0) | (h_kft > 22.0)):
+    if np.any((h_kft < 0.0) | (h_kft > 23.0)):
         raise ValueError("La aproximación cuadrática sólo es válida entre 0 y 22 000 ft.")
     if np.any((map_array < 34.0) | (map_array > 42.0)):
         raise ValueError("La aproximación sólo cubre MAP entre 34 y 42 inHg.")
@@ -289,6 +302,9 @@ def potencia_cuadratica(
 def graficar_ajustes(
     archivo: str | Path | None = None,
     *,
+    imagen_fondo: str | Path | None = "../fondo.png",
+    limites_imagen: tuple[float, float, float, float] | None = None,
+    transparencia_fondo: float = 0.70,
     mostrar_cuadraticas: bool = True,
     mostrar: bool = True,
 ):
@@ -302,6 +318,7 @@ def graficar_ajustes(
 
     fig, ax = plt.subplots(figsize=(9.0, 5.8))
     h_fina = np.linspace(0.0, 27.0, 600)
+    h_extrapolada = np.linspace(27.0, ALTITUD_MAX_EXTRAPOLACION_KFT, 300)
     h_cuad = np.linspace(0.0, 22.0, 400)
     colores = plt.get_cmap("viridis")(np.linspace(0.08, 0.92, len(MAPS_INHG)))
 
@@ -329,13 +346,37 @@ def graficar_ajustes(
                 alpha=0.9,
             )
 
+    ax.plot(
+        h_extrapolada,
+        potencia_motor(
+            h_extrapolada,
+            42.0,
+            unidad_altitud="kft",
+            extrapolar_42=True,
+        ),
+        color=colores[-1],
+        linestyle="-.",
+        linewidth=1.8,
+    )
+
     ax.set(
         xlabel="Altitud de presión, h [10³ ft]",
         ylabel="Potencia al eje de un motor [hp]",
         title="Lycoming TIO-541-E — familia de curvas a 2900 RPM",
-        xlim=(0, 27),
-        ylim=(270, 405),
+        xlim=(0, ALTITUD_MAX_EXTRAPOLACION_KFT),
+        ylim=(0, 405),
     )
+    if imagen_fondo is not None:
+        imagen = plt.imread(imagen_fondo)
+        if limites_imagen is None:
+            limites_imagen = (0, ALTITUD_MAX_EXTRAPOLACION_KFT, 0, 405)
+        ax.imshow(
+            imagen,
+            extent=limites_imagen,
+            aspect="auto",
+            alpha=transparencia_fondo,
+            zorder=0,
+        )
     ax.grid(True, alpha=0.3)
 
     leyenda_map = [
@@ -345,6 +386,7 @@ def graficar_ajustes(
     leyenda_estilo = [
         Line2D([0], [0], marker="o", linestyle="none", color="black", label="Puntos digitalizados"),
         Line2D([0], [0], linestyle="-", color="black", label="Interpolación PCHIP"),
+        Line2D([0], [0], linestyle="-.", color="black", label="Extrapolación lineal de MAP=42 inHg"),
     ]
     if mostrar_cuadraticas:
         leyenda_estilo.append(
@@ -365,16 +407,22 @@ def graficar_ajustes(
     return fig, ax
 
 
-if __name__ == "__pepe__":
-    print(f"Un motor:  h=15 000 ft, MAP=40 inHg -> {potencia_motor(5000, 42):.1f} hp")
-    print(f"Dos motores: h=15 000 ft, MAP=40 inHg -> {potencia_total_duke(5000, 42):.1f} hp")
+if __name__ == "__main__":
+    print(f"Un motor:  h=15 000 ft, MAP=40 inHg -> {potencia_motor(5000, 40):.1f} hp")
+    print(f"Dos motores: h=15 000 ft, MAP=40 inHg -> {potencia_total_duke(5000, 40):.1f} hp")
     print(
-        "Un motor extrapolado: h=30 000 ft, MAP=42 inHg -> "
-        f"{potencia_motor(3000, 42, extrapolar_42=True):.1f} hp"
+        "Un motor extrapolado: h=30 000 ft, MAP=40 inHg -> "
+        f"{potencia_motor(3000, 40, extrapolar_42=True):.1f} hp"
     )
     graficar_ajustes("curvas_tio541_2900rpm.png", mostrar=False)
     #graficar_ajustes("curvas_tio541_2900rpm.pdf", mostrar=False)
 
-#Test
-#for i in range(1, 9000, 1000):
-#    print (potencia_motor(i, 41))
+    print("Potencia de un motor, MAP=40 inHg:")
+    for altitud_ft in range(0, int(ALTITUD_MAX_EXTRAPOLACION_KFT * 1000) + 1, 1000):
+        potencia_hp = potencia_motor(
+            altitud_ft,
+            40,
+            unidad_altitud="ft",
+            extrapolar_42=True,
+        )
+        print(f"{altitud_ft:>5} ft: {potencia_hp:.1f} hp")
